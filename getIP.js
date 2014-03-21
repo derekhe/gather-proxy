@@ -2,12 +2,14 @@ var $ = require("node-jquery");
 var _ = require("lodash");
 var Q = require("q");
 
-var ip = [];
+var ipFound = [];
 var matchRegex = function(url) {
     var deferred = Q.defer();
 
     $.get(url, function(html) {
         deferred.resolve(html.match(/\d+\.\d+.\d+.\d+:\d+/g));
+    }).fail(function() {
+        console.log("Error getting", url);
     });
 
     return deferred.promise;
@@ -49,9 +51,18 @@ var proxySites = {
 };
 
 
+var deferreds = [];
+
 _.forEach(_.keys(proxySites), function(url) {
-    proxySites[url](url).then(function(ip) {
+    var deferred = proxySites[url](url);
+    deferreds.push(deferred);
+    deferred.then(function(ip) {
         console.log(url, ip.length);
-        console.log(ip);
+        ipFound = _.union(ipFound, ip);
     })
 });
+
+Q.all(deferreds).then(function() {
+    console.log(ipFound);
+    console.log("Total found", ipFound.length);
+})
